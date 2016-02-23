@@ -11,9 +11,10 @@ from mvz import const
 from mvz.methods import shared
 
 anticipation_time = 30
-freq_cutoff = 0.1
-padding = 100
+freq_cutoff = 0.05
+padding = 80
 initial_offset = 0
+
 
 def bandpass_filter_data(data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     """Lowpass filter the supplied x, y data."""
@@ -74,8 +75,8 @@ def make_frame_specs(x_filt: np.ndarray, y_filt: np.ndarray) -> (
 def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
                                xspec: FrameSpec, yspec: FrameSpec) -> (
                                    List[const.BoundingBox]):
-    key_frames_x = [0] + list(fn.sums([frame for _, frame in xspec]))
-    key_frames_y = [0] + list(fn.sums([frame for _, frame in yspec]))
+    key_frames_x = [0] + list(fn.sums([frame for _, frame in xspec]))[:-1]
+    key_frames_y = [0] + list(fn.sums([frame for _, frame in yspec]))[:-1]
 
     def key_frame_index(key_frames, frame):
         for ki, k in enumerate(key_frames):
