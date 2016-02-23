@@ -6,10 +6,6 @@ from PIL import Image
 from mvz import const
 
 
-def load_path_data():
-    pass
-
-
 def read_path_data(path_data_fn: str) -> pd.DataFrame:
     """Read the path data output by the image processing step.
 
