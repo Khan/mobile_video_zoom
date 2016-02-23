@@ -121,7 +121,6 @@ def _interpolate1(start_coord: int, finish_coord: int, distance: int) -> int:
 
 def interpolate(start_box: const.BoundingBox, finish_box: const.BoundingBox,
                 distance: int) -> const.BoundingBox:
-    print("Interpolating from %s to %s." % (start_box, finish_box))
     return shared.tuple4(tuple(
         _interpolate1(start_coord, final_coord, distance)
         for start_coord, final_coord in zip(start_box, finish_box)))
@@ -138,16 +137,13 @@ def anticipate_changes(
     for i, box in enumerate(boxes):
         if should_anticipate[i]:
             dist = distance_to_next_change(boxes, i)
-            print("distance to change: %s" % dist)
             result = interpolate(
                 box, boxes[i + dist], dist)
         else:
             result = box
         new_boxes.append(result)
-        print(result)
     return new_boxes
 
-    print(should_anticipate)
     return boxes
 
 
