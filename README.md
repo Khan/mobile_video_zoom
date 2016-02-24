@@ -18,7 +18,7 @@ From the project root directory, run:
 `bin/run_mvz.py <youtube_id>`
 
 If this has never been run on the video before, this will take a long time (in
-the neighborhood of ~15 min per 1 min of video).  In the future, the slow image
+the neighborhood of 15 min per 1 min of video).  In the future, the slow image
 processing steps are cached in the `./cache` directory.  (You can bust the
 cache and recompute everything by running `bin/run_mvz.py --bust-cache
 <youtube_id>`.)
