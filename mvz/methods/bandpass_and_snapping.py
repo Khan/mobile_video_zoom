@@ -148,13 +148,13 @@ def anticipate_changes(
     return boxes
 
 
-def main():
-    data = shared.read_path_data(const.path_data_fn)
+def main(youtube_id: str) -> List[const.BoundingBox]:
+    data = shared.read_path_data(const.path_data_fn(youtube_id))
     x_filt, y_filt = bandpass_filter_data(data)
     x_frames, y_frames = make_frame_specs(x_filt, y_filt)
     boxes = make_boxes_from_frame_spec(
         const.min_frame - initial_offset, const.max_frame - initial_offset,
         x_frames, y_frames)
     boxes = anticipate_changes(boxes)
-
-    shared.crop_to_bounding_boxes(boxes)
+    shared.crop_to_bounding_boxes(youtube_id, boxes)
+    return boxes

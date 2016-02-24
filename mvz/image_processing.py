@@ -3,34 +3,43 @@
 The "center of change" is defined as the average position of pixels in the
 video, weighted by the squared value of the (approximate) time derivative of
 the video.
-
-In order to produce the individual frames used, as input, I ran the following
-ffmpeg command:
-`ffmpeg -i ~/Desktop/AqMT_zB9rP8.mp4 -vsync 1 -r 15 -s 1280x720 -f image2 './test_images/AqMT_zB9rP8_%05d.png'`
 """
 import csv
-from typing import Iterable, Tuple
+import os.path
+from typing import Iterable, List, Tuple
 
 import funcy as fn
-from PIL import Image, ImageMath
+from PIL import Image
+from PIL import ImageMath
 
 from . import const
 
-n_frames = 1938
+
+def n_frames(youtube_id: str) -> int:
+    # TODO(colin): somehow unite this with the filename in the const module
+    extractor = r'%s_(\d+).png' % youtube_id
+    return fn.rcompose(
+        os.listdir,
+        fn.partial(fn.filter, extractor),
+        fn.partial(fn.map, extractor),
+        fn.partial(fn.map, int),
+        max)(const.cache_dir)
 
 
-def get_frame(frame_index: int) -> Image:
+def get_frame(youtube_id: str, frame_index: int) -> Image.Image:
     """Get a PIL.image for the specified 0-indexed frame number."""
-    return Image.open(const.fn_base % (frame_index + 1))
+    return Image.open(const.frame_fn_template(youtube_id) % (frame_index + 1))
 
 
-def get_frames(frame_count: int, min_frame: int = 0) -> Iterable[Image]:
+def get_frames(youtube_id: str, frame_count: int, min_frame: int = 0) -> (
+        Iterable[Image.Image]):
     """Get frame_count frames starting at min_frame as PIL.images."""
-    return (get_frame(i) for i in range(min_frame, min_frame + frame_count))
+    return (get_frame(youtube_id, i)
+            for i in range(min_frame, min_frame + frame_count))
 
 
 def image_squared_difference(
-        im_tuple: Tuple[Image, Image]) -> Tuple[float, ...]:
+        im_tuple: Tuple[Image.Image, Image.Image]) -> Tuple[float, ...]:
     """Find the squared difference between two images.
 
     Args:
@@ -49,7 +58,8 @@ def image_squared_difference(
     return bands
 
 
-def weighted_average_pos(im_bands: Tuple[Image, ...]) -> Tuple[float, float]:
+def weighted_average_pos(im_bands: Tuple[Image.Image, ...]) -> (
+        Tuple[float, float]):
     """Find the average position in the image weighted by the image values.
 
     All bands are weighted equally.
@@ -74,14 +84,26 @@ def weighted_average_pos(im_bands: Tuple[Image, ...]) -> Tuple[float, float]:
     return (weighted_average_x / pixel_sum, weighted_average_y / pixel_sum)
 
 
-def main() -> None:
+def main(youtube_id: str, bust_cache: bool = False) -> (
+        List[Tuple[float, float]]):
     """Read in the frames of the video, find the center of change.
 
     Writes out x,y positions to a csv, one row per frame.
     """
-    positions = fn.imap(
-        weighted_average_pos,
-        fn.imap(image_squared_difference,
-                fn.pairwise(get_frames(n_frames))))
-    with open(const.path_data_fn, 'w') as f:
-        csv.writer(f).writerows(positions)
+    path_data_fn = const.path_data_fn(youtube_id)
+
+    if not os.path.exists(path_data_fn) or bust_cache:
+        positions = fn.rcompose(
+            n_frames,
+            fn.partial(get_frames, youtube_id),
+            fn.pairwise,
+            fn.partial(fn.map, image_squared_difference),
+            fn.partial(fn.map, weighted_average_pos),
+            list)(youtube_id)
+
+        with open(const.path_data_fn(youtube_id), 'w') as f:
+            csv.writer(f).writerows(positions)
+        return positions
+    else:
+        with open(const.path_data_fn(youtube_id), 'r') as f:
+            return [(float(line[0]), float(line[1])) for line in csv.reader(f)]

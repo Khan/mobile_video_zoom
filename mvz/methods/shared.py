@@ -15,11 +15,12 @@ def read_path_data(path_data_fn: str) -> pd.DataFrame:
     return data.fillna(method='pad')
 
 
-def crop_to_bounding_boxes(boxes: Iterable[Tuple[int, int, int, int]]):
+def crop_to_bounding_boxes(youtube_id: str,
+                           boxes: Iterable[const.BoundingBox]):
     for i, box in zip(range(const.min_frame, const.max_frame), boxes):
-        im = Image.open(const.fn_base % (i+1))
+        im = Image.open(const.frame_fn_template(youtube_id) % (i+1))
         cropped = im.crop(box=box)
-        cropped.save(const.output_format_string % (i+1))
+        cropped.save(const.output_frame_template(youtube_id) % (i+1))
 
 
 def tuple4(tuple_n: Tuple[int, ...]) -> Tuple[int, int, int, int]:

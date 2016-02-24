@@ -10,15 +10,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as pl
 import matplotlib.animation
 
-
 fps = 15
 dpi = 72
 
-video_output_template = (
-    "/Users/colin/Desktop/image_output/movie_output/%s_%s.mp4")
 
-
-def main(method_name: str, method_param: str) -> None:
+def main(youtube_id: str, method_name: str, method_param: str) -> None:
     FFMpegWriter = matplotlib.animation.writers['ffmpeg']
     metadata = {'title': 'Simple smoothing'}
     writer = FFMpegWriter(fps=fps, metadata=metadata)
@@ -31,11 +27,11 @@ def main(method_name: str, method_param: str) -> None:
 
     imobj = None
 
-    video_fn = video_output_template % (method_name, method_param)
+    video_fn = const.output_video_fn(youtube_id, method_name, method_param)
 
     with writer.saving(fig, video_fn, dpi):
         for i in range(const.min_frame, const.max_frame):
-            frame_fn = const.output_format_string % (i+1)
+            frame_fn = const.output_frame_template(youtube_id) % (i+1)
             im = pl.imread(frame_fn)
             if imobj is None:
                 imobj = pl.imshow(im)
