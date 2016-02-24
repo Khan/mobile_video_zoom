@@ -10,7 +10,7 @@ Install python dependencies:
 
 Optionally, install extra dev tools:
 `pip install ipython`
-`pip install install git+git://github.com/python/mypy.git`
+`pip install git+git://github.com/python/mypy.git`
 
 ## Running
 
