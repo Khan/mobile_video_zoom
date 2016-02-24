@@ -9,6 +9,7 @@ import os.path
 from typing import Iterable, List, Tuple
 
 import funcy as fn
+import numpy as np
 from PIL import Image
 from PIL import ImageMath
 
@@ -72,13 +73,19 @@ def weighted_average_pos(im_bands: Tuple[Image.Image, ...]) -> (
     weighted_average_x = 0.0
     weighted_average_y = 0.0
 
+    xvec = np.arange(0, im_bands[0].width, 1)
+    yvec = np.arange(0, im_bands[0].height, 1)
+    xm, ym = np.meshgrid(xvec, yvec, indexing='xy')
+
     for im in im_bands:
-        px = im.load()
-        for x in range(im.width):
-            for y in range(im.height):
-                pixel_sum += px[x, y]
-                weighted_average_x += x * px[x, y]
-                weighted_average_y += y * px[x, y]
+        pxdata = np.fromstring(im.tobytes(), dtype=np.uint32,
+                               count=(const.max_width * const.max_height))
+        pxdata = np.reshape(pxdata, (const.max_height,
+                                     const.max_width)).astype(np.double)
+        pixel_sum += np.sum(pxdata[:])
+        weighted_average_x += np.sum(xm * pxdata)
+        weighted_average_y += np.sum(ym * pxdata)
+
     if pixel_sum == 0:
         return (float('NaN'), float('NaN'))
     return (weighted_average_x / pixel_sum, weighted_average_y / pixel_sum)
