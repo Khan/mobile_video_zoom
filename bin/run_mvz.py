@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.5
 
+import csv
 import fix_paths
 import os.path
 
@@ -27,8 +28,15 @@ def main():
     mvz.downloader.download(args.youtube_id, bust_cache=args.bust_cache)
     mvz.image_processing.main(args.youtube_id, bust_cache=args.bust_cache)
     mvz_methods = __import__('mvz.methods.%s' % args.method).methods
-    getattr(mvz_methods, args.method).main(args.youtube_id)
+    boxes = getattr(mvz_methods, args.method).main(args.youtube_id)
     mvz.generate_video.main(args.youtube_id, args.method, "auto")
+
+    box_output_fn = os.path.join(
+        mvz.const.output_dir, "%s_%s_auto_boxes.csv" % (
+            args.youtube_id, args.method))
+    with open(box_output_fn, 'w') as f:
+        csv.writer(f).writerows(boxes)
+
 
 if __name__ == '__main__':
     main()
