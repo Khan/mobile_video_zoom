@@ -78,22 +78,38 @@ def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
     key_frames_x = [0] + list(fn.sums([frame for _, frame in xspec]))[:-1]
     key_frames_y = [0] + list(fn.sums([frame for _, frame in yspec]))[:-1]
 
+    @fn.autocurry
     def key_frame_index(key_frames, frame):
         for ki, k in enumerate(key_frames):
             if k > frame:
                 return ki - 1
         return len(key_frames) - 1
 
-    frame_pos_x = map(
-        lambda key_idx: int(round(xspec[key_idx][0])),
-        map(
-            fn.curry(key_frame_index)(key_frames_x),
-            range(min_frame, max_frame)))
-    frame_pos_y = map(
-        lambda key_idx: int(round(yspec[key_idx][0])),
-        map(
-            fn.curry(key_frame_index)(key_frames_y),
-            range(min_frame, max_frame)))
+    @fn.autocurry
+    def ensure_in_range(size, maxval, pos):
+        if pos - padding/2 < 0:
+            pos = padding/2
+        elif pos - padding/2 + size > maxval:
+            pos = maxval - size + padding/2
+        return pos
+
+    frame_pos_x_fn = fn.rcompose(
+        fn.partial(fn.map,
+                   key_frame_index(key_frames_x)),
+        fn.partial(fn.map, lambda key_idx: int(round(xspec[key_idx][0]))),
+        fn.partial(fn.map,
+                   ensure_in_range(const.box_width, const.max_width)))
+
+    frame_pos_x = frame_pos_x_fn(range(min_frame, max_frame))
+
+    frame_pos_y_fn = fn.rcompose(
+        fn.partial(fn.map,
+                   key_frame_index(key_frames_y)),
+        fn.partial(fn.map, lambda key_idx: int(round(yspec[key_idx][0]))),
+        fn.partial(fn.map,
+                   ensure_in_range(const.box_height, const.max_height)))
+
+    frame_pos_y = frame_pos_y_fn(range(min_frame, max_frame))
 
     return [shared.tuple4(tuple(
         int(round(coord))
@@ -155,6 +171,6 @@ def main(youtube_id: str) -> List[const.BoundingBox]:
     boxes = make_boxes_from_frame_spec(
         const.min_frame - initial_offset, const.max_frame - initial_offset,
         x_frames, y_frames)
-    boxes = anticipate_changes(boxes)
-    shared.crop_to_bounding_boxes(youtube_id, boxes)
+    boxes_with_smoothing = anticipate_changes(boxes)
+    shared.crop_to_bounding_boxes(youtube_id, boxes_with_smoothing)
     return boxes
