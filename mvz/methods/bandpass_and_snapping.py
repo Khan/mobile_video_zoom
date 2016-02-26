@@ -1,5 +1,5 @@
 """Bandpass filter the positions, then snap to as few shots as possible."""
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 import funcy as fn
 import numpy as np
@@ -72,11 +72,19 @@ def make_frame_specs(x_filt: np.ndarray, y_filt: np.ndarray) -> (
     return x_frames, y_frames
 
 
+FrameSpecOutput = Union[List[const.BoundingBox],
+                        List[Tuple[float, int, int, int, int]]]
+
+
 def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
-                               xspec: FrameSpec, yspec: FrameSpec) -> (
-                                   List[const.BoundingBox]):
+                               xspec: FrameSpec, yspec: FrameSpec,
+                               keyframes_only: bool = False) -> (
+                                   FrameSpecOutput):
     key_frames_x = [0] + list(fn.sums([frame for _, frame in xspec]))[:-1]
     key_frames_y = [0] + list(fn.sums([frame for _, frame in yspec]))[:-1]
+
+    all_keyframes = list(sorted(list(
+        set(key_frames_x).union(set(key_frames_y)))))
 
     @fn.autocurry
     def key_frame_index(key_frames, frame):
@@ -100,8 +108,6 @@ def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
         fn.partial(fn.map,
                    ensure_in_range(const.box_width, const.max_width)))
 
-    frame_pos_x = frame_pos_x_fn(range(min_frame, max_frame))
-
     frame_pos_y_fn = fn.rcompose(
         fn.partial(fn.map,
                    key_frame_index(key_frames_y)),
@@ -109,13 +115,30 @@ def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
         fn.partial(fn.map,
                    ensure_in_range(const.box_height, const.max_height)))
 
-    frame_pos_y = frame_pos_y_fn(range(min_frame, max_frame))
+    if keyframes_only:
+        frame_pos_x = frame_pos_x_fn(all_keyframes)
+        frame_pos_y = frame_pos_y_fn(all_keyframes)
+        return [
+            (float(frame) / len(range(min_frame, max_frame)),) +
+            shared.tuple4(tuple(
+                int(round(coord))
+                for coord in (pos_x - padding/2,
+                              pos_y - padding/2,
+                              pos_x - padding/2 + const.box_width,
+                              pos_y - padding/2 + const.box_height)
+            )) for frame, pos_x, pos_y in zip(all_keyframes, frame_pos_x,
+                                              frame_pos_y)]
+    else:
+        frame_pos_x = frame_pos_x_fn(range(min_frame, max_frame))
+        frame_pos_y = frame_pos_y_fn(range(min_frame, max_frame))
 
-    return [shared.tuple4(tuple(
-        int(round(coord))
-        for coord in (pos_x - padding/2, pos_y - padding/2, pos_x - padding/2 +
-                      const.box_width, pos_y - padding/2 + const.box_height)
-        )) for pos_x, pos_y in zip(frame_pos_x, frame_pos_y)]
+        return [shared.tuple4(tuple(
+            int(round(coord))
+            for coord in (pos_x - padding/2,
+                          pos_y - padding/2,
+                          pos_x - padding/2 + const.box_width,
+                          pos_y - padding/2 + const.box_height)
+            )) for pos_x, pos_y in zip(frame_pos_x, frame_pos_y)]
 
 
 def distance_to_next_change(boxes: List[Any], idx: int) -> Optional[int]:
@@ -164,13 +187,15 @@ def anticipate_changes(
     return boxes
 
 
-def main(youtube_id: str) -> List[const.BoundingBox]:
+def main(youtube_id: str, keyframes_only: bool = False) -> (
+        List[const.BoundingBox]):
     data = shared.read_path_data(const.path_data_fn(youtube_id))
     x_filt, y_filt = bandpass_filter_data(data)
     x_frames, y_frames = make_frame_specs(x_filt, y_filt)
     boxes = make_boxes_from_frame_spec(
         const.min_frame - initial_offset, const.max_frame - initial_offset,
-        x_frames, y_frames)
-    boxes_with_smoothing = anticipate_changes(boxes)
-    shared.crop_to_bounding_boxes(youtube_id, boxes_with_smoothing)
+        x_frames, y_frames, keyframes_only=keyframes_only)
+    if not keyframes_only:
+        boxes_with_smoothing = anticipate_changes(boxes)
+        shared.crop_to_bounding_boxes(youtube_id, boxes_with_smoothing)
     return boxes

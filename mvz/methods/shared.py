@@ -5,6 +5,11 @@ from PIL import Image
 
 from mvz import const
 
+# If the x value dips below this, we remove the point.  This helps deal with
+# when Sal goes to change colors in the video and the cursor moves all the way
+# to the left.
+min_value_x = 100
+
 
 def read_path_data(path_data_fn: str) -> pd.DataFrame:
     """Read the path data output by the image processing step.
@@ -12,6 +17,8 @@ def read_path_data(path_data_fn: str) -> pd.DataFrame:
     Return a pandas dataframe with NaN values filled with the previous value.
     """
     data = pd.read_csv(path_data_fn, header=None, names=['x', 'y'])
+    data['y'][data['x'] < min_value_x] = float('NaN')
+    data['x'][data['x'] < min_value_x] = float('NaN')
     return data.fillna(method='pad')
 
 

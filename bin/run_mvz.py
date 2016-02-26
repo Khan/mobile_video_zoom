@@ -1,11 +1,12 @@
 #!/usr/bin/env python3.5
 
 import csv
-import fix_paths
+import json
 import os.path
 
 import argparse
 
+import fix_paths
 import mvz.const
 import mvz.downloader
 import mvz.generate_video
@@ -21,6 +22,12 @@ def main():
         '--bust-cache', action='store_true',
         help='refetch the video from youtube and reprocess everything')
     parser.add_argument(
+        '--keyframes-only', action='store_true',
+        help='only write output for the keyframe positions, not every frame')
+    parser.add_argument(
+        '--json', action='store_true',
+        help='write output as json arrays instead of csv')
+    parser.add_argument(
         '--method', type=str, default='bandpass_and_snapping')
     args = parser.parse_args()
     if not os.path.exists(mvz.const.output_dir):
@@ -28,14 +35,21 @@ def main():
     mvz.downloader.download(args.youtube_id, bust_cache=args.bust_cache)
     mvz.image_processing.main(args.youtube_id, bust_cache=args.bust_cache)
     mvz_methods = __import__('mvz.methods.%s' % args.method).methods
-    boxes = getattr(mvz_methods, args.method).main(args.youtube_id)
-    mvz.generate_video.main(args.youtube_id, args.method, "auto")
+    boxes = getattr(mvz_methods, args.method).main(
+        args.youtube_id, keyframes_only=args.keyframes_only)
+    if not args.keyframes_only:
+        mvz.generate_video.main(args.youtube_id, args.method, "auto")
+
+    extension = "json" if args.json else "csv"
 
     box_output_fn = os.path.join(
-        mvz.const.output_dir, "%s_%s_auto_boxes.csv" % (
-            args.youtube_id, args.method))
+        mvz.const.output_dir, "%s_%s_auto_boxes.%s" % (
+            args.youtube_id, args.method, extension))
     with open(box_output_fn, 'w') as f:
-        csv.writer(f).writerows(boxes)
+        if args.json:
+            f.write(json.dumps(boxes))
+        else:
+            csv.writer(f).writerows(boxes)
 
 
 if __name__ == '__main__':
