@@ -1,5 +1,5 @@
 """Bandpass filter the positions, then snap to as few shots as possible."""
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple
 
 import funcy as fn
 import numpy as np
@@ -9,6 +9,7 @@ import scipy.stats as stats
 
 from mvz import const
 from mvz.methods import shared
+from mvz.methods.shared import FrameSpecOutput
 
 anticipation_time = 30
 freq_cutoff = 0.05
@@ -71,10 +72,6 @@ def make_frame_specs(x_filt: np.ndarray, y_filt: np.ndarray,
                          video_height)
 
     return x_frames, y_frames
-
-
-FrameSpecOutput = Union[List[const.BoundingBox],
-                        List[Tuple[float, int, int, int, int]]]
 
 
 def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
@@ -189,8 +186,7 @@ def anticipate_changes(
 
 def main(youtube_id: str, frame_count: int,
          video_width: int, video_height: int,
-         keyframes_only: bool = False) -> (
-        List[const.BoundingBox]):
+         keyframes_only: bool = False) -> FrameSpecOutput:
     data = shared.read_path_data(const.path_data_fn(youtube_id))
     x_filt, y_filt = bandpass_filter_data(data)
     x_frames, y_frames = make_frame_specs(x_filt, y_filt, video_width, video_height)
@@ -202,4 +198,5 @@ def main(youtube_id: str, frame_count: int,
     if not keyframes_only:
         boxes_with_smoothing = anticipate_changes(boxes)
         shared.crop_to_bounding_boxes(youtube_id, frame_count, boxes_with_smoothing)
+
     return boxes

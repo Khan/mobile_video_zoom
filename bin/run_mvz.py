@@ -42,6 +42,7 @@ def main():
         video_width=video_width,
         video_height=video_height
     )
+    normalized_boxes = mvz_methods.shared.normalize_boxes(boxes, video_width, video_height)
     if args.all_frames:
         mvz.generate_video.main(args.youtube_id, args.method, "auto")
 
@@ -52,9 +53,9 @@ def main():
             args.youtube_id, args.method, extension))
     with open(box_output_fn, 'w') as f:
         if args.json:
-            f.write(json.dumps(boxes))
+            f.write(json.dumps(normalized_boxes))
         else:
-            csv.writer(f).writerows(boxes)
+            csv.writer(f).writerows(normalized_boxes)
 
 
 if __name__ == '__main__':
