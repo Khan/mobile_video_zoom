@@ -185,15 +185,15 @@ def anticipate_changes(
     return new_boxes
 
 
-def main(youtube_id: str, keyframes_only: bool = False) -> (
+def main(youtube_id: str, frame_count: int, keyframes_only: bool = False) -> (
         List[const.BoundingBox]):
     data = shared.read_path_data(const.path_data_fn(youtube_id))
     x_filt, y_filt = bandpass_filter_data(data)
     x_frames, y_frames = make_frame_specs(x_filt, y_filt)
     boxes = make_boxes_from_frame_spec(
-        const.min_frame - initial_offset, const.max_frame - initial_offset,
+        -initial_offset, frame_count - initial_offset,
         x_frames, y_frames, keyframes_only=keyframes_only)
     if not keyframes_only:
         boxes_with_smoothing = anticipate_changes(boxes)
-        shared.crop_to_bounding_boxes(youtube_id, boxes_with_smoothing)
+        shared.crop_to_bounding_boxes(youtube_id, frame_count, boxes_with_smoothing)
     return boxes

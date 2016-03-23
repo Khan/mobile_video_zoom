@@ -22,10 +22,6 @@ box_height = box_width
 max_width = 1280
 max_height = 720
 
-# The frames we're currently sampling for testing
-min_frame = 0
-max_frame = 1938
-
 BoundingBox = Tuple[int, int, int, int]
 
 

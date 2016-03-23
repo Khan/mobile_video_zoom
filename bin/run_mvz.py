@@ -36,7 +36,10 @@ def main():
     mvz.image_processing.main(args.youtube_id, bust_cache=args.bust_cache)
     mvz_methods = __import__('mvz.methods.%s' % args.method).methods
     boxes = getattr(mvz_methods, args.method).main(
-        args.youtube_id, keyframes_only=not args.all_frames)
+        args.youtube_id,
+        frame_count=mvz.image_processing.n_frames(args.youtube_id),
+        keyframes_only=not args.all_frames
+    )
     if args.all_frames:
         mvz.generate_video.main(args.youtube_id, args.method, "auto")
 

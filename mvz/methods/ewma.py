@@ -31,13 +31,13 @@ def box_for_position(pos: Tuple[int, int])-> Tuple[int, int, int, int]:
                       origin[1] + const.box_height)))
 
 
-def crop_all_to_bounding_box() -> None:
+def crop_all_to_bounding_box(frame_count: int) -> None:
     smoothed_np = smooth_with_ewma(
         shared.read_path_data(const.path_data_fn),
         smoothing_span).values
 
     boxes = (box_for_position(smoothed_np[i])
-             for i in range(const.min_frame, const.max_frame))
+             for i in range(0, frame_count))
 
     shared.crop_to_bounding_boxes(boxes)
 

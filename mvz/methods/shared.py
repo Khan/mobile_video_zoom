@@ -23,8 +23,9 @@ def read_path_data(path_data_fn: str) -> pd.DataFrame:
 
 
 def crop_to_bounding_boxes(youtube_id: str,
+                           frame_count: int,
                            boxes: Iterable[const.BoundingBox]):
-    for i, box in zip(range(const.min_frame, const.max_frame), boxes):
+    for i, box in zip(range(0, frame_count), boxes):
         im = Image.open(const.frame_fn_template(youtube_id) % (i+1))
         cropped = im.crop(box=box)
         cropped.save(const.output_frame_template(youtube_id) % (i+1))
