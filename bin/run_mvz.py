@@ -22,8 +22,8 @@ def main():
         '--bust-cache', action='store_true',
         help='refetch the video from youtube and reprocess everything')
     parser.add_argument(
-        '--keyframes-only', action='store_true',
-        help='only write output for the keyframe positions, not every frame')
+        '--all-frames', action='store_true',
+        help='write output for every frame, not only for the keyframe positions')
     parser.add_argument(
         '--json', action='store_true',
         help='write output as json arrays instead of csv')
@@ -36,8 +36,8 @@ def main():
     mvz.image_processing.main(args.youtube_id, bust_cache=args.bust_cache)
     mvz_methods = __import__('mvz.methods.%s' % args.method).methods
     boxes = getattr(mvz_methods, args.method).main(
-        args.youtube_id, keyframes_only=args.keyframes_only)
-    if not args.keyframes_only:
+        args.youtube_id, keyframes_only=not args.all_frames)
+    if args.all_frames:
         mvz.generate_video.main(args.youtube_id, args.method, "auto")
 
     extension = "json" if args.json else "csv"
