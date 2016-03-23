@@ -184,8 +184,6 @@ def anticipate_changes(
         new_boxes.append(result)
     return new_boxes
 
-    return boxes
-
 
 def main(youtube_id: str, keyframes_only: bool = False) -> (
         List[const.BoundingBox]):
