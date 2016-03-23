@@ -18,10 +18,6 @@ output_dir = "./output"
 box_width = 400
 box_height = box_width
 
-# The size of the video in px (we could probably just infer this?)
-max_width = 1280
-max_height = 720
-
 BoundingBox = Tuple[int, int, int, int]
 
 

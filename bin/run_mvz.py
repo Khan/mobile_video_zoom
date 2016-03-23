@@ -33,12 +33,14 @@ def main():
     if not os.path.exists(mvz.const.output_dir):
         os.makedirs(mvz.const.output_dir)
     mvz.downloader.download(args.youtube_id, bust_cache=args.bust_cache)
-    mvz.image_processing.main(args.youtube_id, bust_cache=args.bust_cache)
+    (_, video_width, video_height) = mvz.image_processing.main(args.youtube_id, bust_cache=args.bust_cache)
     mvz_methods = __import__('mvz.methods.%s' % args.method).methods
     boxes = getattr(mvz_methods, args.method).main(
         args.youtube_id,
         frame_count=mvz.image_processing.n_frames(args.youtube_id),
-        keyframes_only=not args.all_frames
+        keyframes_only=not args.all_frames,
+        video_width=video_width,
+        video_height=video_height
     )
     if args.all_frames:
         mvz.generate_video.main(args.youtube_id, args.method, "auto")
