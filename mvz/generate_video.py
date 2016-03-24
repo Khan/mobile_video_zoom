@@ -30,7 +30,7 @@ def main(youtube_id: str, method_name: str, method_param: str) -> None:
     video_fn = const.output_video_fn(youtube_id, method_name, method_param)
 
     with writer.saving(fig, video_fn, dpi):
-        for i in range(const.min_frame, const.max_frame):
+        for i in range(0, const.max_frame):
             frame_fn = const.output_frame_template(youtube_id) % (i+1)
             im = pl.imread(frame_fn)
             if imobj is None:

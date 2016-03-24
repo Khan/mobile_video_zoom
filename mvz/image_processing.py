@@ -9,6 +9,7 @@ import os.path
 from typing import Iterable, List, Tuple
 
 import funcy as fn
+import itertools
 import numpy as np
 from PIL import Image
 from PIL import ImageMath
@@ -59,7 +60,8 @@ def image_squared_difference(
     return bands
 
 
-def weighted_average_pos(im_bands: Tuple[Image.Image, ...]) -> (
+def weighted_average_pos(im_bands: Tuple[Image.Image, ...],
+                         video_width: int, video_height: int) -> (
         Tuple[float, float]):
     """Find the average position in the image weighted by the image values.
 
@@ -79,9 +81,9 @@ def weighted_average_pos(im_bands: Tuple[Image.Image, ...]) -> (
 
     for im in im_bands:
         pxdata = np.fromstring(im.tobytes(), dtype=np.uint32,
-                               count=(const.max_width * const.max_height))
-        pxdata = np.reshape(pxdata, (const.max_height,
-                                     const.max_width)).astype(np.double)
+                               count=(video_width * video_height))
+        pxdata = np.reshape(pxdata, (video_height,
+                                     video_width)).astype(np.double)
         pixel_sum += np.sum(pxdata[:])
         weighted_average_x += np.sum(xm * pxdata)
         weighted_average_y += np.sum(ym * pxdata)
@@ -92,25 +94,36 @@ def weighted_average_pos(im_bands: Tuple[Image.Image, ...]) -> (
 
 
 def main(youtube_id: str, bust_cache: bool = False) -> (
-        List[Tuple[float, float]]):
+        Tuple[List[Tuple[float, float]], int, int]):
     """Read in the frames of the video, find the center of change.
 
     Writes out x,y positions to a csv, one row per frame.
     """
     path_data_fn = const.path_data_fn(youtube_id)
 
+    frames = get_frames(youtube_id,
+                        n_frames(youtube_id))
+    first_frame = next(frames)
+    # next() mutates the Iterable so we need to add the first frame back
+    all_frames = itertools.chain((first_frame,), frames)
+
+    (width, height) = (first_frame.width, first_frame.height)
+    assert width > 0 and height > 0
+
     if not os.path.exists(path_data_fn) or bust_cache:
+        def weighted_pos(im_bands: Tuple[Image.Image, ...]) -> Tuple[float, float]:
+            return weighted_average_pos(im_bands, width, height)
+
         positions = fn.rcompose(
-            n_frames,
-            fn.partial(get_frames, youtube_id),
             fn.pairwise,
             fn.partial(fn.map, image_squared_difference),
-            fn.partial(fn.map, weighted_average_pos),
-            list)(youtube_id)
+            fn.partial(fn.map, weighted_pos),
+            list
+        )(all_frames)
 
         with open(const.path_data_fn(youtube_id), 'w') as f:
             csv.writer(f).writerows(positions)
-        return positions
+        return (positions, width, height)
     else:
         with open(const.path_data_fn(youtube_id), 'r') as f:
-            return [(float(line[0]), float(line[1])) for line in csv.reader(f)]
+            return ([(float(line[0]), float(line[1])) for line in csv.reader(f)], width, height)

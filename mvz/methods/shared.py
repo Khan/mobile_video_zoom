@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Union, List
 
 import pandas as pd
 from PIL import Image
@@ -10,6 +10,13 @@ from mvz import const
 # to the left.
 min_value_x = 100
 
+Frame = Tuple[float, int, int, int, int]
+Frames = List[Tuple[float, int, int, int, int]]
+FrameSpecOutput = Union[List[const.BoundingBox],
+                        List[Tuple[float, int, int, int, int]]]
+
+NormalizedFrame = Tuple[float, float, float, float, float]
+NormalizedFrames = List[Tuple[float, float, float, float, float]]
 
 def read_path_data(path_data_fn: str) -> pd.DataFrame:
     """Read the path data output by the image processing step.
@@ -23,11 +30,30 @@ def read_path_data(path_data_fn: str) -> pd.DataFrame:
 
 
 def crop_to_bounding_boxes(youtube_id: str,
+                           frame_count: int,
                            boxes: Iterable[const.BoundingBox]):
-    for i, box in zip(range(const.min_frame, const.max_frame), boxes):
-        im = Image.open(const.frame_fn_template(youtube_id) % (i+1))
+    for i, box in zip(range(0, frame_count), boxes):
+        im = Image.open(const.frame_fn_template(youtube_id) % (i + 1))
         cropped = im.crop(box=box)
-        cropped.save(const.output_frame_template(youtube_id) % (i+1))
+        cropped.save(const.output_frame_template(youtube_id) % (i + 1))
+
+
+def normalize_boxes(boxes: Frames,
+                    video_width: int, video_height: int) -> NormalizedFrames:
+    def normalize_box(box: Frame) -> NormalizedFrame:
+        def normalize_horizontal_dimension(d: int) -> float:
+            return d / video_width
+
+        def normalize_vertical_dimension(d: int) -> float:
+            return d / video_height
+
+        (frame, x, y, w, h) = box
+
+        return (frame,
+                normalize_horizontal_dimension(x), normalize_vertical_dimension(y),
+                normalize_horizontal_dimension(w), normalize_vertical_dimension(h))
+
+    return map(normalize_box, boxes)
 
 
 def tuple4(tuple_n: Tuple[int, ...]) -> Tuple[int, int, int, int]:

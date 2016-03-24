@@ -1,5 +1,5 @@
 """Bandpass filter the positions, then snap to as few shots as possible."""
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple
 
 import funcy as fn
 import numpy as np
@@ -9,6 +9,7 @@ import scipy.stats as stats
 
 from mvz import const
 from mvz.methods import shared
+from mvz.methods.shared import FrameSpecOutput
 
 anticipation_time = 30
 freq_cutoff = 0.05
@@ -47,7 +48,8 @@ def choose_window(seq: np.ndarray, window_size: int) -> Tuple[float, int]:
 FrameSpec = List[Tuple[float, int]]
 
 
-def make_frame_specs(x_filt: np.ndarray, y_filt: np.ndarray) -> (
+def make_frame_specs(x_filt: np.ndarray, y_filt: np.ndarray,
+                     video_width: int, video_height: int) -> (
         Tuple[FrameSpec, FrameSpec]):
 
     def make_spec(seq: np.ndarray, box_size: int, max_size: int) -> FrameSpec:
@@ -64,20 +66,17 @@ def make_frame_specs(x_filt: np.ndarray, y_filt: np.ndarray) -> (
 
     x_frames = make_spec(x_filt[initial_offset:],
                          const.box_width,
-                         const.max_width)
+                         video_width)
     y_frames = make_spec(y_filt[initial_offset:],
                          const.box_height,
-                         const.max_height)
+                         video_height)
 
     return x_frames, y_frames
 
 
-FrameSpecOutput = Union[List[const.BoundingBox],
-                        List[Tuple[float, int, int, int, int]]]
-
-
 def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
                                xspec: FrameSpec, yspec: FrameSpec,
+                               video_width: int, video_height: int,
                                keyframes_only: bool = False) -> (
                                    FrameSpecOutput):
     key_frames_x = [0] + list(fn.sums([frame for _, frame in xspec]))[:-1]
@@ -106,14 +105,14 @@ def make_boxes_from_frame_spec(min_frame: int, max_frame: int,
                    key_frame_index(key_frames_x)),
         fn.partial(fn.map, lambda key_idx: int(round(xspec[key_idx][0]))),
         fn.partial(fn.map,
-                   ensure_in_range(const.box_width, const.max_width)))
+                   ensure_in_range(const.box_width, video_width)))
 
     frame_pos_y_fn = fn.rcompose(
         fn.partial(fn.map,
                    key_frame_index(key_frames_y)),
         fn.partial(fn.map, lambda key_idx: int(round(yspec[key_idx][0]))),
         fn.partial(fn.map,
-                   ensure_in_range(const.box_height, const.max_height)))
+                   ensure_in_range(const.box_height, video_height)))
 
     if keyframes_only:
         frame_pos_x = frame_pos_x_fn(all_keyframes)
@@ -184,18 +183,20 @@ def anticipate_changes(
         new_boxes.append(result)
     return new_boxes
 
-    return boxes
 
-
-def main(youtube_id: str, keyframes_only: bool = False) -> (
-        List[const.BoundingBox]):
+def main(youtube_id: str, frame_count: int,
+         video_width: int, video_height: int,
+         keyframes_only: bool = False) -> FrameSpecOutput:
     data = shared.read_path_data(const.path_data_fn(youtube_id))
     x_filt, y_filt = bandpass_filter_data(data)
-    x_frames, y_frames = make_frame_specs(x_filt, y_filt)
+    x_frames, y_frames = make_frame_specs(x_filt, y_filt, video_width, video_height)
     boxes = make_boxes_from_frame_spec(
-        const.min_frame - initial_offset, const.max_frame - initial_offset,
-        x_frames, y_frames, keyframes_only=keyframes_only)
+        -initial_offset, frame_count - initial_offset,
+        x_frames, y_frames,
+        video_width, video_height,
+        keyframes_only=keyframes_only)
     if not keyframes_only:
         boxes_with_smoothing = anticipate_changes(boxes)
-        shared.crop_to_bounding_boxes(youtube_id, boxes_with_smoothing)
+        shared.crop_to_bounding_boxes(youtube_id, frame_count, boxes_with_smoothing)
+
     return boxes
